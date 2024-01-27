@@ -3,7 +3,6 @@
 #pragma GCC optimize ("unroll-loops")
 #pragma GCC target("sse,sse2,sse3,ssse3,sse4,avx,avx2,fma")
 #include <bits/stdc++.h>
-#include <bits/extc++.h>
 
 using namespace std;
 using ll = long long;
@@ -12,11 +11,9 @@ using vint = vector<int>;
 using matrix = vector<vint>;
 using pii = pair<int, int>;
 using vpii = vector<pii>;
-using dbl = deque<bool>;
-using dbltrix = deque<dbl>;
 using sint = stack<int>;
 using tii = tuple<int, int, int>;
-using ordered_set = __gnu_pbds::tree<int, __gnu_pbds::null_type, less<int>, __gnu_pbds::rb_tree_tag, __gnu_pbds::tree_order_statistics_node_update>;
+using base = complex<double>;
 
 #define fastio ios::sync_with_stdio(false), cin.tie(NULL), cout.tie(NULL)
 #define endl '\n'
@@ -24,121 +21,145 @@ using ordered_set = __gnu_pbds::tree<int, __gnu_pbds::null_type, less<int>, __gn
 #define all(vec) vec.begin(), vec.end()
 
 const int INF = 0x3f3f3f3f;
+const long double PI = acos(-1);
 
 class segmentTree {
 private:
-    vll a, tree;
-    int n;
+  vll a, tree;
+  int n;
 
-    void init(int node, int start, int end) {
-        if (start == end) {
-            tree[node] = a[start];
-        } else {
-            init(node * 2,  start, (start + end) / 2);
-            init(node * 2 + 1, (start + end) / 2 + 1, end);
-            tree[node] = tree[node * 2]  + tree[node * 2 + 1];
-        }
-    }
+  int init(int node, int start, int end) {
+      if (start == end) { // 리프 노드라면
+          tree[node] = a[start];
+      }
+      const int mid = (start + end) / 2;
+      init(node * 2,  start, mid);
+      init(node * 2 + 1, mid + 1, end);
 
-    void update(int node, int start, int end, int index, ll val) {
-        if (index < start || index > end) {
-            return;
-        }
-        if (start == end) {
-            a[index] = val;
-            tree[node] = val;
-            return;
-        }
-        update(node * 2,  start, (start + end) / 2, index, val);
-        update(node * 2 + 1, (start + end) / 2 + 1, end, index, val);
-        tree[node] = tree[node * 2]  + tree[node * 2 + 1];
-    }
+      return tree[node] = tree[node * 2]  + tree[node * 2 + 1];
+  }
 
-    ll query(int node, int start, int end, int left, int right) {
-        if (left > end || right < start) {
-            return 0;
-        }
-        if (left <= start && end <= right) {
-            return tree[node];
-        }
+  ll update(int node, int start, int end, int index, ll val) {
+      if (index < start || index > end) {
+          return -1;
+      }
 
-        return query(node * 2,  start, (start + end) / 2, left, right) + query(node * 2 + 1, (start + end) / 2 + 1, end, left, right);
-    }
+      const int mid = (start + end) / 2;
+      if (start <= index && index <= mid) update(node * 2,  start, mid, index, val);
+      else update(node * 2 + 1, mid + 1, end, index, val);
+      return tree[node] = tree[node * 2] + tree[node * 2 + 1];
+  }
+
+  ll query(int node, int start, int end, int left, int right) {
+      if (left > end || right < start) {
+          return 0;
+      }
+      if (left <= start && end <= right) {
+          return tree[node];
+      }
+
+      const int mid = (start + end) / 2;
+      return query(node * 2, start, mid, left, right) + query(node * 2 + 1, mid + 1, end, left, right);
+  }
 
 public:
-    segmentTree(vll &arr) {
-        a = arr;
-        n = arr.size();
-        tree.resize(4 * n);
-        init(1, 0, n - 1);
-    }
+  segmentTree(vll &arr) {
+      a = arr;
+      n = arr.size();
+      tree.resize(4 * n);
+      init(1, 0, n - 1);
+  }
 
-    void update(int index, ll val) {
-        update(1, 0, n - 1, index, val);
-    }
+  void update(int index, ll val) {
+      update(1, 0, n - 1, index, val);
+  }
 
-    ll query(int left, int right) {
-        return query(1, 0, n - 1, left, right);
-    }
+  ll query(int left, int right) {
+      return query(1, 0, n - 1, left, right);
+  }
 };
 
-class HLD {
-private:
-    matrix inp, g;
-    vint size, par, depth, top, in, out;
-    int pv;
+class unions {
+	private:
+		vint parent;
+		int _find(int x) {
+			if (parent[x] == x) return x;
+        	return parent[x] = _find(parent[x]);
+		}
+		void _unionParent(int a, int b) {
+        	a = _find(a);
+        	b = _find(b);
+        	if (a < b) parent[b] = a;
+        	else parent[a] = b;
+    	}
+    public:
+    	int find(int x) {
+    		_find(x);
+		}
+    	void unionParent(int a, int b) {
+			_unionParent(a, b);
+		}
+		vint getParent() {
+			return parent;
+		}
+};
 
-public:
-    HLD() {
-        pv = 0;
+struct dinic {
+    int n;
+    matrix capacity, flow;
+    vint level, ptr;
+
+    dinic(int n) : n(n), capacity(n, vint(n)), flow(n, vint(n)), level(n), ptr(n) {}
+
+    void add_edge(int from, int to, int cap) {
+        capacity[from][to] += cap;
     }
 
-    void addEdge(int s, int e) {
-        inp[s].push_back(e); inp[e].push_back(s);
-    }
-
-    void dfs(int v, int b = -1) {
-        for(auto i : inp[v]) if(i != b) g[v].push_back(i), dfs(i);
-    }
-
-    void dfs1(int v) {
-        size[v] = 1;
-        for(auto &i : g[v]) {
-            depth[i] = depth[v] + 1; par[i] = v;
-            dfs1(i); size[v] += size[i];
-            if(size[i] > size[g[v][0]]) swap(i, g[v][0]);
+    bool bfs(int source, int sink) {
+        fill(level.begin(), level.end(), -1);
+        level[source] = 0;
+        queue<int> que;
+        que.push(source);
+        while (!que.empty()) {
+            int u = que.front();
+            que.pop();
+            for (int v = 0; v < n; v++) {
+                if (level[v] < 0 && capacity[u][v] - flow[u][v] > 0) {
+                    level[v] = level[u] + 1;
+                    que.push(v);
+                }
+            }
         }
+        return level[sink] >= 0;
     }
 
-    void dfs2(int v) {
-        in[v] = ++pv;
-        for(auto i : g[v]) top[i] = (i == g[v][0]) ? top[v] : i, dfs2(i);
-        out[v] = pv;
-    }
-
-    void hld(int root) {
-        dfs(root); dfs1(root); dfs2(root);
-    }
-
-    void updatePath(int u, int v, ll x) {
-        for(; top[u]!=top[v]; u=par[top[u]]) {
-            if(depth[top[u]] < depth[top[v]]) swap(u, v);
-            update(in[top[u]], in[u], x);
+    int dfs(int u, int sink, int pushed) {
+        if (u == sink || pushed == 0) return pushed;
+        for (int &v = ptr[u]; v < n; v++) {
+            if (level[v] == level[u] + 1 && capacity[u][v] - flow[u][v] > 0) {
+                int f = dfs(v, sink, min(pushed, capacity[u][v] - flow[u][v]));
+                if (f > 0) {
+                    flow[u][v] += f;
+                    flow[v][u] -= f;
+                    return f;
+                }
+            }
         }
-        if(depth[u] > depth[v]) swap(u, v);
-        update(in[u], in[v], x);
-        // if edge query, then update(in[u]+1, in[v], x)
+        return 0;
     }
 
-    ll queryPath(int u, int v) {
+    ll max_flow(int source, int sink) {
         ll ret = 0;
-        for(; top[u]!=top[v]; u=par[top[u]]) {
-            if(depth[top[u]] < depth[top[v]]) swap(u, v);
-            ret += query(in[top[u]], in[u]);
+        while (bfs(source, sink)) {
+            fill(ptr.begin(), ptr.end(), 0);
+            while (int pushed = dfs(source, sink, numeric_limits<int>::max())) ret += pushed;
         }
-        if(depth[u] > depth[v]) swap(u, v);
-        ret += query(in[u], in[v]);
-        // if edge query, then query(in[u]+1, in[v])
         return ret;
     }
 };
+
+int main() {
+    fastio;
+
+    return 0;
+}
