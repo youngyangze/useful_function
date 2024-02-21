@@ -158,6 +158,75 @@ struct dinic {
     }
 };
 
+struct nodes {
+    ll max, max2, maxCount, sum;
+};
+
+nodes merge(nodes a, nodes b) {
+    if (a.max == b.max) return {a.max, max(a.max2, b.max2), a.maxCount + b.maxCount, a.sum + b.sum};
+    if (a.max > b.max) swap(a, b);
+    return {b.max, max(a.max, b.max2), b.maxCount, a.sum + b.sum};
+}
+
+class segmentTreeBeats {
+    private:
+    vll arr;
+    vector<nodes> tree;
+
+    public:
+    segmentTreeBeats(vll a) {
+        this->arr = a;
+        this->tree.resize(4 * MAX_N);
+    }
+
+    void push(ll node, ll start, ll end) {
+        if (start == end) return;
+        for (auto i : {node << 1, (node << 1) + 1}) {
+            if (this->tree[node].max < this->tree[i].max) {
+                this->tree[i].sum -= this->tree[i].maxCount * (this->tree[i].max - this->tree[node].max);
+                this->tree[i].max = this->tree[node].max;
+            }
+        }
+    }
+
+    nodes init(ll node, ll start, ll end) {
+        if (start == end) return this->tree[node] = {this->arr[start], -1, 1, this->arr[start]};
+        const ll mid = (start + end) >> 1;
+        return this->tree[node] = merge(init(node << 1, start, mid), init((node << 1) + 1, mid + 1, end));
+    }
+
+    void update(ll node, ll start, ll end, ll left, ll right, ll value) {
+        push(node, start, end);
+        if (right < start || end < left || this->tree[node].max <= value) return;
+        if (left <= start && end <= right && this->tree[node].max2 < value) {
+            this->tree[node].sum -= this->tree[node].maxCount * (this->tree[node].max - value);
+            this->tree[node].max = value;
+            push(node, start, end);
+            return;
+        }
+        const ll mid = (start + end) >> 1;
+        update(node << 1, start, mid, left, right, value);
+        update((node << 1) + 1, mid + 1, end, left, right, value);
+        this->tree[node] = merge(this->tree[node << 1], this->tree[(node << 1) + 1]);
+    }
+
+    ll getMax(ll node, ll start, ll end, ll left, ll right) {
+        push(node, start, end);
+        if (right < start || end < left) return 0;
+        if (left <= start && end <= right) return this->tree[node].max;
+        const ll mid = (start + end) >> 1;
+        return max(getMax(node << 1, start, mid, left, right), getMax((node << 1) + 1, mid + 1, end, left, right));
+    }
+
+    ll getSum(ll node, ll start, ll end, ll left, ll right) {
+        push(node, start, end);
+        if (right < start || end < left) return 0;
+        if (left <= start && end <= right) return this->tree[node].sum;
+        const ll mid = (start + end) >> 1;
+        return getSum(node << 1, start, mid, left, right) + getSum((node << 1) + 1, mid + 1, end, left, right);
+    }
+};
+
 int main() {
     fastio;
 
